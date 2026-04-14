@@ -2,6 +2,7 @@ package edu.touro.mcon364.concurrency.lesson1.exercises;
 
 import edu.touro.mcon364.concurrency.common.model.Task;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -41,6 +42,18 @@ public class TaskWorker {
         // TODO: create a thread with the given name that processes every task
         //       in the list (increment processedCount for each one),
         //       then start it and join it.
+//lamba passed in as runnable and second paremeter is runnable which a name
+
+            Thread t = new Thread(() -> {
+            workerName= Thread.currentThread().getName();
+            for(Task task : tasks){
+                processedCount++;
+
+            } }, threadName
+
+        );
+            t.start();
+            t.join();
     }
 
     /** Returns the number of tasks processed by the worker thread. */
