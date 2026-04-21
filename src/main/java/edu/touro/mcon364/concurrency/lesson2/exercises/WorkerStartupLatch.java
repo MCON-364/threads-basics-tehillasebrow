@@ -39,18 +39,31 @@ public class WorkerStartupLatch {
      */
     public void launchAndWait(int workerCount) throws InterruptedException {
         // TODO: create a latch that will count down once per worker
-
+        CountDownLatch ready = new CountDownLatch(workerCount);
         for (int i = 1; i <= workerCount; i++) {
             int id = i;
             // TODO: create and start a thread named "worker-" + id that:
             //       (1) records its own name in startedNames (think about thread safety here)
             //       (2) signals the latch that it is ready
+            new Thread(() -> {
+
+                try { Thread.sleep(id * 200L);
+                startedNames.add(Thread.currentThread().getName());
+                } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+
+                ready.countDown();
+            }, "worker-" + i).start();
+        }
+
+
+        ready.await();
+      allStarted= true;
+
         }
 
         // TODO: make the calling thread wait here until every worker has signalled
-
         // TODO: mark the startup phase as complete
-    }
+
 
     /** Returns {@code true} once all workers have called {@code countDown()}. */
     public boolean isAllStarted() {
