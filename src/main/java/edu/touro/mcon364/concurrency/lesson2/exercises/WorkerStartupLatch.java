@@ -1,77 +1,72 @@
 package edu.touro.mcon364.concurrency.lesson2.exercises;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
 /**
- * Exercise 2 — Startup coordination with {@link CountDownLatch}.
+ * Exercise 2 — Startup coordination with CountDownLatch.
  *
- * Scenario: a coordinator thread must wait until a fixed number of worker
- * threads have finished their startup phase before allowing work to begin.
- *
- * Your tasks:
- *
- * (A) Implement {@link #launchAndWait(int)}.
- *     - Create a {@code CountDownLatch} with the given {@code workerCount}.
- *     - Start {@code workerCount} threads.  Each thread must:
- *         1. Record its name in the {@code startedNames} list (use a
- *            {@code synchronized} block on the list).
- *         2. Call {@code countDown()} on the latch.
- *     - After starting all threads, call {@code latch.await()} on the main
- *       calling thread so it blocks until all workers have checked in.
- *     - After {@code await()} returns, set {@code allStarted = true}.
- *
- * (B) Understand the difference from a plain {@code join()} loop:
- *     A {@code CountDownLatch} lets the workers keep running after they
- *     signal; {@code join()} would wait for the thread to fully terminate.
+ * Demonstrates how a coordinating thread can wait for multiple workers
+ * to reach a certain point (startup) without waiting for them to finish.
  */
 public class WorkerStartupLatch {
 
-    // Written by launchAndWait()
+    // Written by launchAndWait(), read by other threads
     private volatile boolean allStarted = false;
-    private final java.util.List<String> startedNames =
-            new java.util.ArrayList<>();
+
+    // Records worker thread names as they check in
+    private final List<String> startedNames = new ArrayList<>();
 
     /**
-     * Launch {@code workerCount} threads, wait for all to check in, then set
-     * {@code allStarted = true}.
-     *
-     * @param workerCount number of worker threads to create
+     * Launch {@code workerCount} threads, wait for all to check in,
+     * then mark startup as complete.
      */
     public void launchAndWait(int workerCount) throws InterruptedException {
-        // TODO: create a latch that will count down once per worker
-        CountDownLatch ready = new CountDownLatch(workerCount);
+
+        // Latch starts with one count per worker
+        CountDownLatch latch = new CountDownLatch(workerCount);
+
         for (int i = 1; i <= workerCount; i++) {
             int id = i;
-            // TODO: create and start a thread named "worker-" + id that:
-            //       (1) records its own name in startedNames (think about thread safety here)
-            //       (2) signals the latch that it is ready
-            new Thread(() -> {
 
-                try { Thread.sleep(id * 200L);
-                startedNames.add(Thread.currentThread().getName());
-                } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            Thread worker = new Thread(() -> {
+                try {
+                    // Simulate startup work
+                    Thread.sleep(id * 200L);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
 
-                ready.countDown();
-            }, "worker-" + i).start();
+                // Record this worker's name safely
+                synchronized (startedNames) {
+                    startedNames.add(Thread.currentThread().getName());
+                }
+
+                // Signal that this worker has finished startup
+                latch.countDown();
+
+            }, "worker-" + id);
+
+            worker.start();
         }
 
+        // Wait until ALL workers have called countDown()
+        latch.await();
 
-        ready.await();
-      allStarted= true;
+        // Mark startup phase as complete
+        allStarted = true;
+    }
 
-        }
-
-        // TODO: make the calling thread wait here until every worker has signalled
-        // TODO: mark the startup phase as complete
-
-
-    /** Returns {@code true} once all workers have called {@code countDown()}. */
+    /** Returns true once all workers have signaled readiness. */
     public boolean isAllStarted() {
         return allStarted;
     }
 
     /** Returns the names of threads that checked in (order may vary). */
-    public java.util.List<String> getStartedNames() {
-        return java.util.List.copyOf(startedNames);
+    public List<String> getStartedNames() {
+        synchronized (startedNames) {
+            return List.copyOf(startedNames);
+        }
     }
 }
