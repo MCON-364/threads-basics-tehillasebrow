@@ -15,35 +15,35 @@ import java.util.concurrent.locks.ReentrantLock;
 public class ExecutorTaskManager {
 
     /* ── SYNCHRONIZER CHOICE ────────────────────────────────────────────────
-     * If I needed to wait for an entire batch of tasks to finish before starting
-     * the next batch, I would use a CountDownLatch. Each task would count down
-     * when finished, and the coordinating thread could await completion of
-     * the whole batch before continuing.
+     * If I needed to ensure that a full batch of tasks finished before starting
+     * the next batch, I would use a CountDownLatch. Each task would decrement
+     * the latch when finished, and the coordinating thread would simply wait
+     * until the latch reaches zero before continuing.
      * ──────────────────────────────────────────────────────────────────────*/
 
     private static final int POOL_SIZE = 4;
 
-    /** Fixed-size thread pool ensures bounded concurrency */
+    /** Fixed-size thread pool limits concurrency and reuses threads */
     private final ExecutorService pool =
             Executors.newFixedThreadPool(POOL_SIZE);
 
-    /** Atomic counter guarantees unique IDs without synchronization */
+    /** Atomic counter guarantees unique IDs without explicit locking */
     private final AtomicInteger idCounter = new AtomicInteger(0);
 
     /**
-     * List of tasks that have finished execution.
-     * Written by multiple worker threads, so it must be protected.
+     * Tasks that have finished executing.
+     * This list is written by multiple worker threads.
      */
     private final List<Task> completedTasks = new ArrayList<>();
 
-    /** Explicit lock protecting completedTasks */
+    /** Lock protecting concurrent access to completedTasks */
     private final ReentrantLock completedTasksLock = new ReentrantLock();
 
     // ── ID generation ────────────────────────────────────────────────────────
 
     /**
      * Returns a unique, auto-incremented task ID.
-     * IDs start at 1 and increase atomically.
+     * IDs start at 1 and increase monotonically.
      */
     public int nextId() {
         return idCounter.incrementAndGet();
@@ -59,7 +59,7 @@ public class ExecutorTaskManager {
         int id = nextId();
         Task task = new Task(id, description, priority);
 
-        Callable<Task> work = () -> {
+        Callable<Task> callable = () -> {
             try {
                 Thread.sleep(10); // simulate work
             } catch (InterruptedException e) {
@@ -71,7 +71,7 @@ public class ExecutorTaskManager {
             return task;
         };
 
-        return pool.submit(work);
+        return pool.submit(callable);
     }
 
     // ── recording completion ─────────────────────────────────────────────────
@@ -79,9 +79,9 @@ public class ExecutorTaskManager {
     /**
      * Records a finished task.
      *
-     * Multiple worker threads may call this method concurrently.
-     * Without a lock, simultaneous writes to ArrayList could corrupt
-     * its internal structure and cause data loss or runtime exceptions.
+     * This method is called concurrently by worker threads. A lock is necessary
+     * because ArrayList is not thread-safe, and simultaneous writes could corrupt
+     * its internal state or cause lost updates.
      */
     private void recordCompleted(Task task) {
         completedTasksLock.lock();
@@ -118,7 +118,7 @@ public class ExecutorTaskManager {
     // ── lifecycle ────────────────────────────────────────────────────────────
 
     /**
-     * Shuts down the pool and waits up to 30 seconds for tasks to finish.
+     * Shuts down the pool and waits for tasks to complete.
      */
     public void shutdown() throws InterruptedException {
         pool.shutdown();
@@ -128,7 +128,7 @@ public class ExecutorTaskManager {
     // ── observability ────────────────────────────────────────────────────────
 
     /**
-     * Returns a defensive copy of completed tasks.
+     * Returns a snapshot of completed tasks.
      */
     public List<Task> getCompletedTasks() {
         completedTasksLock.lock();
@@ -139,7 +139,9 @@ public class ExecutorTaskManager {
         }
     }
 
-    /** Returns the most recently issued task ID. */
+    /**
+     * Returns the most recently issued task ID.
+     */
     public int getLastIssuedId() {
         return idCounter.get();
     }
