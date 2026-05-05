@@ -21,28 +21,24 @@ public class TaskRegistry {
 
     private final Map<Integer, Task> tasks = new HashMap<>();
 
-    public void add(Task task) {
-        // TODO: make thread-safe
+    public synchronized void add(Task task) {
         tasks.put(task.id(), task);
     }
 
-    public Optional<Task> findById(int id) {
-        // TODO: make thread-safe
+    public synchronized Optional<Task> findById(int id) {
         return Optional.ofNullable(tasks.get(id));
     }
 
-    public Optional<Task> remove(int id) {
-        // TODO: make thread-safe
+    public synchronized Optional<Task> remove(int id) {
         return Optional.ofNullable(tasks.remove(id));
     }
 
-    public int size() {
-        // TODO: make thread-safe
+    public synchronized int size() {
         return tasks.size();
     }
 
-    public Map<Integer, Task> snapshot() {
-        // TODO: return a defensive copy safely
+    public synchronized Map<Integer, Task> snapshot() {
+        // Defensive, unmodifiable copy
         return Map.copyOf(tasks);
     }
 }

@@ -1,20 +1,30 @@
 package edu.touro.mcon364.concurrency.lesson1.exercises;
 
 /**
- * Exercise 1:
- * Make this class thread-safe so that concurrent increments do not lose updates.
+ * A simple thread-safe counter for Lesson 1.
+ * Uses synchronized methods to ensure correctness.
  */
 public class ThreadSafeTaskCounter {
 
-    private int count;
+    private int count = 0;
 
-    public void increment() {
-        // TODO: make this operation thread-safe
+    /** Increments the counter by one in a thread-safe manner. */
+    public synchronized void increment() {
         count++;
     }
 
-    public int getCount() {
-        // TODO: ensure callers see a correct value under concurrent use
+    /** Decrements the counter by one in a thread-safe manner. */
+    public synchronized void decrement() {
+        count--;
+    }
+
+    /** Returns the current counter value. */
+    public synchronized int getCount() {
         return count;
+    }
+
+    /** Resets the counter back to zero. */
+    public synchronized void reset() {
+        count = 0;
     }
 }
