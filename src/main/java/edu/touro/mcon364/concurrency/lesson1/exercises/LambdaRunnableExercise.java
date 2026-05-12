@@ -51,6 +51,14 @@ public class LambdaRunnableExercise {
     public void launchLoggerThread(List<String> log, String message) throws InterruptedException {
         // TODO: create a Runnable lambda, pass it to new Thread(..., "logger"),
         //       start the thread, join it, and store the message in loggedMessage.
+    Runnable logger = () -> { //this part was very confusing. I'm still confused about lamda in a thread and the naming of it
+        log.add(message);
+        loggedMessage=message;
+    };
+    Thread thread = new Thread(logger, "logger");
+    thread.start();
+    thread.join();
+
     }
 
     /**
@@ -62,7 +70,30 @@ public class LambdaRunnableExercise {
     public void launchTwoCounterThreads(List<Task> tasks) throws InterruptedException {
         // TODO: create two threads using inline lambda syntax, start both,
         //       join both, and store results in highCount and lowCount.
+        Thread a = new Thread(() -> {
+           //count high tasks
+            int count =0;
+            for( Task t: tasks){
+                if (t.priority()== Priority.HIGH)
+                    count++;
+            }
+            highCount=count;
+        }, "counter a");
+        Thread b = new Thread(() ->{
+            //count low tasks
+            int ctr=0;
+            for(Task t: tasks){
+                if(t.priority()==Priority.LOW)
+                    ctr++;
+            }
+            lowCount=ctr;
+        }, "counter b");
+        a.start();
+        b.start();
+        a.join();
+        b.join();
     }
+
 
     public String getLoggedMessage() { return loggedMessage; }
     public int getHighCount()        { return highCount; }
